@@ -15,6 +15,17 @@ request.onupgradeneeded = function(event) {
     db.createObjectStore("Pending", {autoIncrement:true});
 };
 
+request.onsuccess = function(event){
+    db = event.target.result;
+    if(navigator.onLine){
+        checkDB();
+    }
+};
+
+request.onerror = function (event){
+    console.log("Nah" + event.target.errorCode);
+}
+
 function saveRecord(record){
     const transaction = db.transaction(["Pending"], "readwrite");
     const save = transaction.objectStore("Pending");
@@ -32,8 +43,13 @@ function checkDB() {
                 body:JSON.stringify(getAll.result),
                 headers:{Accept:"application/json, test/plain, */*", "Content-Type": "application/json"}
             })
-        
+        .then(response => response.json())
+        .then(() => {
+            const transaction = db.transaction(["Pending"], "readwrite");
+            const save = transaction.objectStore("Pending");
+            store.clear();
+            });
         }
-    }
+    };
 }
-                        
+window.addEventListener("online", checkDB);
