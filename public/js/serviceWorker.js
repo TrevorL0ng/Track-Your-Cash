@@ -25,5 +25,44 @@ self.addEventListener("install", function(track){
 self.skipWaiting();
 
 self.addEventListener("activate", function(track){
-    track.waitUntil
-})
+    track.waitUntil(
+        caches.keys().then(keyList => {
+            return Promise.all(
+                keyList.map(key => {
+                    if (key !== CACHE_NAME && key !== DATA_CACHE_NAME){
+                        console.log("Old cache key removed", key);
+                        return caches.delete(key);
+                    }
+                })
+            );
+        })
+    );
+            self.clients.claim();
+});
+
+self.addEventListener ("fetch", function(track){
+    if (track.request.url.includes("/api")) {
+        track.respondWith(
+            caches.open(DATA_CACHE_NAME).then(cache => {
+                return fetch(track.request)
+                    .then(response => {
+                        if (response.status === 200) {
+                            cache.put(track.request.url, response.clone());
+                        }
+                        return response;
+                    })
+                    .catch(err => {
+                        return cache.match(track.request);
+                    });
+            }).catch (err => console.log(err))
+        );
+        return;
+    }
+    track.respondWith(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.match(track.request).then(response => {
+                return response || fetch(track.request);
+            });
+        })
+    );
+});
